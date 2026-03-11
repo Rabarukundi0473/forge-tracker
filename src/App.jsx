@@ -1081,7 +1081,7 @@ export default function App() {
             <div className="header-logo-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2c0 6-6 8-6 14a6 6 0 0 0 12 0c0-6-6-8-6-14z"/><path d="M12 12c0 3-2 4-2 6a2 2 0 0 0 4 0c0-2-2-3-2-6z"/></svg>
             </div>
-            <div className="header-logo-text">Forge</div>
+            <div className="header-logo-text">Fitness</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:"var(--green)"}}/>
