@@ -55,8 +55,8 @@ ${FONTS}
   --tab-h: 68px;
   --header-h: 56px;
 }
-html { font-size: 16px; }
-body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
+html { font-size: 16px; overflow-x: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; -webkit-font-smoothing: antialiased; overscroll-behavior: none; overflow-x: hidden; width: 100%; }
 
 /* ── App Shell ── */
 .app { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; width: 100%; position: relative; background: var(--bg); }
@@ -80,7 +80,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); min-
 .tab-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text); margin-top: 1px; flex-shrink: 0; }
 
 /* ── Page ── */
-.page { padding: 20px 16px 8px; }
+.page { padding: 20px 16px 8px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
 .page-title { font-size: 26px; font-weight: 800; letter-spacing: -0.8px; margin-bottom: 3px; color: var(--text); }
 .page-title em { font-style: normal; color: var(--text2); font-weight: 500; }
 .page-desc { font-size: 13px; color: var(--text3); margin-bottom: 20px; }
@@ -90,7 +90,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); min-
 .card + .card { margin-top: 8px; }
 
 /* ── Stat row ── */
-.stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.stat-row { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 8px; margin-bottom: 16px; }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
 .stat-label { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 0.5px; margin-bottom: 6px; text-transform: uppercase; }
 .stat-val { font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1; color: var(--text); }
@@ -732,24 +732,24 @@ function LogWorkout({ exercises, plans, notify }) {
           </div>
           <div className="log-block-body">
             {/* Column headers */}
-            <div className="row" style={{paddingBottom:6,borderBottom:"1px solid var(--border)"}}>
-              <div style={{width:28,flexShrink:0}}/>
-              <div style={{width:72,flexShrink:0,textAlign:"center",fontSize:11,fontWeight:700,color:"var(--text3)",letterSpacing:0.3}}>KG</div>
-              <div style={{width:12,flexShrink:0}}/>
-              <div style={{width:72,flexShrink:0,textAlign:"center",fontSize:11,fontWeight:700,color:"var(--text3)",letterSpacing:0.3}}>REPS</div>
-              <div style={{marginLeft:"auto",fontSize:11,fontWeight:700,color:"var(--text3)",letterSpacing:0.3}}>VOL</div>
-              <div style={{width:36,flexShrink:0}}/>
-              <div style={{width:24,flexShrink:0}}/>
+            <div style={{display:"grid",gridTemplateColumns:"24px 1fr 10px 1fr 40px 34px 20px",gap:4,alignItems:"center",paddingBottom:6,borderBottom:"1px solid var(--border)",marginBottom:2}}>
+              <div/>
+              <div style={{textAlign:"center",fontSize:10,fontWeight:700,color:"var(--text3)"}}>KG</div>
+              <div/>
+              <div style={{textAlign:"center",fontSize:10,fontWeight:700,color:"var(--text3)"}}>REPS</div>
+              <div style={{textAlign:"center",fontSize:10,fontWeight:700,color:"var(--text3)"}}>VOL</div>
+              <div/>
+              <div/>
             </div>
             {se.sets.map((s,i)=>(
-              <div key={s.id} className="set-row" style={{opacity:s.done?0.5:1}}>
-                <div className="set-num-badge">#{i+1}</div>
-                <input type="number" className="set-input" placeholder="0" value={s.weight} min={0} step={0.5} inputMode="decimal" onChange={e=>updSet(se.id,s.id,"weight",e.target.value)}/>
-                <span className="set-x">×</span>
-                <input type="number" className="set-input" placeholder="0" value={s.reps} min={0} inputMode="numeric" onChange={e=>updSet(se.id,s.id,"reps",e.target.value)}/>
-                <span className="set-vol">{((Number(s.weight)||0)*(Number(s.reps)||0)).toFixed(0)}</span>
+              <div key={s.id} style={{display:"grid",gridTemplateColumns:"24px 1fr 10px 1fr 40px 34px 20px",gap:4,alignItems:"center",padding:"6px 0",borderBottom:"1px solid var(--border)",opacity:s.done?0.45:1}}>
+                <div style={{width:24,height:24,background:"var(--bg3)",borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"var(--text3)"}}>#{i+1}</div>
+                <input type="number" className="set-input" style={{width:"100%"}} placeholder="0" value={s.weight} min={0} step={0.5} inputMode="decimal" onChange={e=>updSet(se.id,s.id,"weight",e.target.value)}/>
+                <div style={{textAlign:"center",fontSize:13,color:"var(--text3)"}}>×</div>
+                <input type="number" className="set-input" style={{width:"100%"}} placeholder="0" value={s.reps} min={0} inputMode="numeric" onChange={e=>updSet(se.id,s.id,"reps",e.target.value)}/>
+                <div style={{fontSize:11,color:"var(--text3)",fontWeight:600,textAlign:"center"}}>{((Number(s.weight)||0)*(Number(s.reps)||0)).toFixed(0)}</div>
                 <button className={`set-done-btn ${s.done?"done":""}`} onClick={()=>toggleDone(se.id,s.id)}>{s.done?<svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>:<svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='9'/></svg>}</button>
-                <button style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",padding:"0 4px",fontSize:16,lineHeight:1}} onClick={()=>removeSet(se.id,s.id)}>×</button>
+                <button style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",padding:0,fontSize:16,lineHeight:1,textAlign:"center"}} onClick={()=>removeSet(se.id,s.id)}>×</button>
               </div>
             ))}
             <button className="btn btn-secondary btn-xs mt-8" onClick={()=>addSet(se.id)} style={{fontSize:12}}>+ Add Set</button>
@@ -956,16 +956,16 @@ function History({ logs, archivedLogs, notify }) {
             {(log.exercises||[]).map((ex,i)=>(
               <div key={i} style={{marginBottom:14}}>
                 <div className="row-between mb-8"><span style={{fontWeight:700,fontSize:14}}>{ex.name}</span><span className={`tag tag-${ex.muscle}`}>{ex.muscle}</span></div>
-                <div style={{background:"var(--bg)",borderRadius:"8px",padding:"4px 0"}}>
-                  <div className="row" style={{padding:"4px 10px",borderBottom:"1px solid var(--border)"}}>
-                    {["SET","WEIGHT","REPS","VOL"].map(h=><div key={h} style={{flex:h==="SET"?0:1,minWidth:h==="SET"?28:0,fontSize:10,fontWeight:700,color:"var(--text3)",textAlign:h==="SET"?"center":"left"}}>{h}</div>)}
+                <div style={{background:"var(--bg2)",borderRadius:"8px",overflow:"hidden"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"28px 1fr 1fr 1fr",padding:"5px 10px",borderBottom:"1px solid var(--border)"}}>
+                    {["#","KG","REPS","VOL"].map(h=><div key={h} style={{fontSize:10,fontWeight:700,color:"var(--text3)",textAlign:"center"}}>{h}</div>)}
                   </div>
                   {(ex.sets||[]).map((s,j)=>(
-                    <div key={j} className="row" style={{padding:"6px 10px",borderBottom:j<ex.sets.length-1?"1px solid var(--border)":"none"}}>
-                      <div style={{width:28,fontSize:12,fontWeight:700,color:"var(--text3)",textAlign:"center"}}>#{j+1}</div>
-                      <div style={{flex:1,fontSize:14,fontWeight:700}}>{s.weight}kg</div>
-                      <div style={{flex:1,fontSize:14}}>{s.reps}</div>
-                      <div style={{flex:1,fontSize:12,color:"var(--text3)"}}>{(s.weight*s.reps).toFixed(0)}</div>
+                    <div key={j} style={{display:"grid",gridTemplateColumns:"28px 1fr 1fr 1fr",padding:"6px 10px",borderBottom:j<ex.sets.length-1?"1px solid var(--border)":"none",alignItems:"center"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textAlign:"center"}}>#{j+1}</div>
+                      <div style={{fontSize:13,fontWeight:700,textAlign:"center"}}>{s.weight}kg</div>
+                      <div style={{fontSize:13,textAlign:"center"}}>{s.reps}</div>
+                      <div style={{fontSize:11,color:"var(--text3)",textAlign:"center"}}>{(s.weight*s.reps).toFixed(0)}</div>
                     </div>
                   ))}
                 </div>
