@@ -869,67 +869,142 @@ function Progress({ exercises, logs }) {
 }
 
 // ── History ───────────────────────────────────────────────────────────────────
-function History({ logs, notify }) {
+function History({ logs, archivedLogs, notify }) {
   const [expanded,setExpanded]=useState(null);
-  const del=async id=>{try{await deleteDoc(doc(db,"logs",id));notify("Entry deleted");}catch{notify("Error");}};
-  const grouped=logs.reduce((acc,log)=>{const k=log.date;if(!acc[k])acc[k]=[];acc[k].push(log);return acc;},{});
+  const [tab,setTab]=useState("active"); // active | trash
+  const [confirmId,setConfirmId]=useState(null);
+
+  // Soft delete — moves to archived state in Firestore
+  const softDelete=async id=>{
+    try{
+      await updateDoc(doc(db,"logs",id),{archived:true,archivedAt:serverTimestamp()});
+      notify("Moved to trash");
+      setConfirmId(null);
+    }catch{notify("Error");}
+  };
+
+  // Restore from trash
+  const restore=async id=>{
+    try{
+      await updateDoc(doc(db,"logs",id),{archived:false,archivedAt:null});
+      notify("Workout restored ✓");
+    }catch{notify("Error restoring");}
+  };
+
+  // Permanent delete only from trash
+  const permDelete=async id=>{
+    try{
+      await deleteDoc(doc(db,"logs",id));
+      notify("Permanently deleted");
+    }catch{notify("Error");}
+  };
+
+  const activeLogs=logs.filter(l=>!l.archived);
+  const grouped=activeLogs.reduce((acc,log)=>{const k=log.date;if(!acc[k])acc[k]=[];acc[k].push(log);return acc;},{});
   const dates=Object.keys(grouped).sort((a,b)=>new Date(b)-new Date(a));
+
+  const renderLogCard=(log,inTrash=false)=>{
+    const vol=(log.exercises||[]).reduce((a,e)=>a+(e.sets||[]).reduce((b,s)=>b+(s.weight*s.reps),0),0);
+    const sets=(log.exercises||[]).reduce((a,e)=>a+(e.sets||[]).length,0);
+    const muscles=[...new Set((log.exercises||[]).map(e=>e.muscle))];
+    const isOpen=expanded===log.id;
+    return (
+      <div key={log.id} className="log-block mb-8" style={inTrash?{opacity:0.75}:{}}>
+        <div className="log-block-header" onClick={()=>setExpanded(isOpen?null:log.id)}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(log.exercises||[]).map(e=>e.name).join(", ")}</div>
+            <div className="row gap-4" style={{flexWrap:"wrap"}}>
+              {muscles.map(m=><span key={m} className={`tag tag-${m}`}>{m}</span>)}
+              <span className="text-xs text-muted">{sets} sets · {vol.toFixed(0)}kg</span>
+            </div>
+          </div>
+          <div className="row gap-6" style={{marginLeft:8,flexShrink:0}}>
+            {inTrash?(
+              <>
+                <button className="btn btn-green btn-xs" onClick={e=>{e.stopPropagation();restore(log.id);}}>Restore</button>
+                <button className="btn btn-danger btn-xs" onClick={e=>{e.stopPropagation();permDelete(log.id);}}>Delete</button>
+              </>
+            ):(
+              confirmId===log.id?(
+                <>
+                  <button className="btn btn-danger btn-xs" onClick={e=>{e.stopPropagation();softDelete(log.id);}}>Confirm</button>
+                  <button className="btn btn-secondary btn-xs" onClick={e=>{e.stopPropagation();setConfirmId(null);}}>Cancel</button>
+                </>
+              ):(
+                <button className="btn btn-danger btn-xs" onClick={e=>{e.stopPropagation();setConfirmId(log.id);}}>🗑</button>
+              )
+            )}
+            <span style={{color:"var(--text3)",fontSize:14}}>{isOpen?"▲":"▼"}</span>
+          </div>
+        </div>
+        {isOpen&&(
+          <div className="log-block-body">
+            {(log.exercises||[]).map((ex,i)=>(
+              <div key={i} style={{marginBottom:14}}>
+                <div className="row-between mb-8"><span style={{fontWeight:700,fontSize:14}}>{ex.name}</span><span className={`tag tag-${ex.muscle}`}>{ex.muscle}</span></div>
+                <div style={{background:"var(--bg)",borderRadius:"8px",padding:"4px 0"}}>
+                  <div className="row" style={{padding:"4px 10px",borderBottom:"1px solid var(--border)"}}>
+                    {["SET","WEIGHT","REPS","VOL"].map(h=><div key={h} style={{flex:h==="SET"?0:1,minWidth:h==="SET"?28:0,fontSize:10,fontWeight:700,color:"var(--text3)",textAlign:h==="SET"?"center":"left"}}>{h}</div>)}
+                  </div>
+                  {(ex.sets||[]).map((s,j)=>(
+                    <div key={j} className="row" style={{padding:"6px 10px",borderBottom:j<ex.sets.length-1?"1px solid var(--border)":"none"}}>
+                      <div style={{width:28,fontSize:12,fontWeight:700,color:"var(--text3)",textAlign:"center"}}>#{j+1}</div>
+                      <div style={{flex:1,fontSize:14,fontWeight:700}}>{s.weight}kg</div>
+                      <div style={{flex:1,fontSize:14}}>{s.reps}</div>
+                      <div style={{flex:1,fontSize:12,color:"var(--text3)"}}>{(s.weight*s.reps).toFixed(0)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="page">
       <div className="page-title">Workout <em>History</em></div>
-      <div className="page-desc">{logs.length} sessions logged</div>
+      <div className="page-desc">{activeLogs.length} sessions logged</div>
 
-      {dates.length===0?(<div className="empty"><div className="empty-icon">📅</div><div className="empty-title">No workouts yet</div><div className="empty-desc">Your logged sessions will appear here</div></div>):dates.map(date=>(
-        <div key={date}>
-          <div className="hist-date">{fmtDate(date)}</div>
-          {grouped[date].map(log=>{
-            const vol=(log.exercises||[]).reduce((a,e)=>a+(e.sets||[]).reduce((b,s)=>b+(s.weight*s.reps),0),0);
-            const sets=(log.exercises||[]).reduce((a,e)=>a+(e.sets||[]).length,0);
-            const muscles=[...new Set((log.exercises||[]).map(e=>e.muscle))];
-            const isOpen=expanded===log.id;
-            return (
-              <div key={log.id} className="log-block mb-8">
-                <div className="log-block-header" onClick={()=>setExpanded(isOpen?null:log.id)}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:700,fontSize:14,marginBottom:5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(log.exercises||[]).map(e=>e.name).join(", ")}</div>
-                    <div className="row gap-4" style={{flexWrap:"wrap"}}>
-                      {muscles.map(m=><span key={m} className={`tag tag-${m}`}>{m}</span>)}
-                      <span className="text-xs text-muted">{sets} sets · {vol.toFixed(0)}kg</span>
-                    </div>
-                  </div>
-                  <div className="row gap-8 ml-8" style={{marginLeft:8,flexShrink:0}}>
-                    <button className="btn btn-danger btn-xs" onClick={e=>{e.stopPropagation();del(log.id);}}>Del</button>
-                    <span style={{color:"var(--text3)",fontSize:14}}>{isOpen?"▲":"▼"}</span>
-                  </div>
-                </div>
-                {isOpen&&(
-                  <div className="log-block-body">
-                    {(log.exercises||[]).map((ex,i)=>(
-                      <div key={i} style={{marginBottom:14}}>
-                        <div className="row-between mb-8"><span style={{fontWeight:700,fontSize:14}}>{ex.name}</span><span className={`tag tag-${ex.muscle}`}>{ex.muscle}</span></div>
-                        <div style={{background:"var(--bg)",borderRadius:"8px",padding:"4px 0"}}>
-                          <div className="row" style={{padding:"4px 10px",borderBottom:"1px solid var(--border)"}}>
-                            {["SET","WEIGHT","REPS","VOL"].map(h=><div key={h} style={{flex:h==="SET"?0:1,minWidth:h==="SET"?28:0,fontSize:10,fontWeight:700,color:"var(--text3)",textAlign:h==="SET"?"center":"left"}}>{h}</div>)}
-                          </div>
-                          {(ex.sets||[]).map((s,j)=>(
-                            <div key={j} className="row" style={{padding:"6px 10px",borderBottom:j<ex.sets.length-1?"1px solid var(--border)":"none"}}>
-                              <div style={{width:28,fontSize:12,fontWeight:700,color:"var(--text3)",textAlign:"center"}}>#{j+1}</div>
-                              <div style={{flex:1,fontSize:14,fontWeight:700}}>{s.weight}kg</div>
-                              <div style={{flex:1,fontSize:14}}>{s.reps}</div>
-                              <div style={{flex:1,fontSize:12,color:"var(--text3)"}}>{(s.weight*s.reps).toFixed(0)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+      {/* Tabs */}
+      <div className="row gap-8 mb-16">
+        <button className={`btn btn-full ${tab==="active"?"btn-primary":"btn-secondary"}`} onClick={()=>setTab("active")}>
+          Active ({activeLogs.length})
+        </button>
+        <button className={`btn btn-full ${tab==="trash"?"btn-danger":"btn-secondary"}`} onClick={()=>setTab("trash")}>
+          🗑 Trash ({archivedLogs.length})
+        </button>
+      </div>
+
+      {tab==="active"&&(
+        <>
+          {dates.length===0?(
+            <div className="empty"><div className="empty-icon">📅</div><div className="empty-title">No workouts yet</div><div className="empty-desc">Your logged sessions will appear here</div></div>
+          ):dates.map(date=>(
+            <div key={date}>
+              <div className="hist-date">{fmtDate(date)}</div>
+              {grouped[date].map(log=>renderLogCard(log,false))}
+            </div>
+          ))}
+        </>
+      )}
+
+      {tab==="trash"&&(
+        <>
+          {archivedLogs.length===0?(
+            <div className="empty"><div className="empty-icon">🗑</div><div className="empty-title">Trash is empty</div><div className="empty-desc">Deleted workouts appear here and can be restored</div></div>
+          ):(
+            <>
+              <div className="card mb-12" style={{background:"#fff7ed",borderColor:"#fed7aa"}}>
+                <div style={{fontSize:13,color:"var(--orange)",fontWeight:600}}>⚠️ Tap Restore to recover a workout, or Delete to permanently remove it.</div>
               </div>
-            );
-          })}
-        </div>
-      ))}
+              {archivedLogs.map(log=>renderLogCard(log,true))}
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -939,11 +1014,15 @@ export default function App() {
   const [page,setPage]=useState("home");
   const [exercises,setExercises]=useState([]);
   const [plans,setPlans]=useState([]);
-  const [logs,setLogs]=useState([]);
+  const [allLogs,setAllLogs]=useState([]);
   const [loading,setLoading]=useState(true);
   const [toast,setToast]=useState(null);
   const seededRef=useRef(false);
   const notify=msg=>setToast(msg);
+
+  // Split into active and archived
+  const logs=allLogs.filter(l=>!l.archived);
+  const archivedLogs=allLogs.filter(l=>l.archived);
 
   const seedDefaults=async()=>{ for(const ex of DEFAULT_EXERCISES) await addDoc(exercisesCol,{...ex,createdAt:serverTimestamp()}); };
 
@@ -955,7 +1034,7 @@ export default function App() {
       setLoading(false);
     });
     const unsubPlans=onSnapshot(query(plansCol,orderBy("createdAt","desc")),snap=>setPlans(snap.docs.map(d=>({id:d.id,...d.data()}))));
-    const unsubLogs=onSnapshot(query(logsCol,orderBy("createdAt","desc")),snap=>setLogs(snap.docs.map(d=>({id:d.id,...d.data()}))));
+    const unsubLogs=onSnapshot(query(logsCol,orderBy("createdAt","desc")),snap=>setAllLogs(snap.docs.map(d=>({id:d.id,...d.data()}))));
     return()=>{unsubEx();unsubPlans();unsubLogs();};
   },[]);
 
@@ -965,9 +1044,8 @@ export default function App() {
     {id:"plans",icon:"📋",label:"Plans"},
     {id:"library",icon:"📚",label:"Library"},
     {id:"progress",icon:"📈",label:"Progress"},
+    {id:"history",icon:"📅",label:"History"},
   ];
-
-  const PAGE_TITLES={home:"Dashboard",log:"Log",plans:"Plans",library:"Library",progress:"Progress"};
 
   if(loading) return (
     <>
@@ -1002,7 +1080,7 @@ export default function App() {
           {page==="plans"&&<Plans exercises={exercises} plans={plans} notify={notify}/>}
           {page==="library"&&<Library exercises={exercises} notify={notify}/>}
           {page==="progress"&&<Progress exercises={exercises} logs={logs}/>}
-          {page==="history"&&<History logs={logs} notify={notify}/>}
+          {page==="history"&&<History logs={allLogs} archivedLogs={archivedLogs} notify={notify}/>}
         </div>
 
         {/* Bottom tab bar */}
@@ -1014,11 +1092,6 @@ export default function App() {
               {page===t.id&&<div className="tab-dot"/>}
             </button>
           ))}
-          <button className={`tab-item ${page==="history"?"active":""}`} onClick={()=>setPage("history")}>
-            <span className="tab-icon">📅</span>
-            <span className="tab-label">History</span>
-            {page==="history"&&<div className="tab-dot"/>}
-          </button>
         </div>
 
         <Timer/>
