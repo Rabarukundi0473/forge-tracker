@@ -908,7 +908,7 @@ function History({ logs, notify }) {
                     {(log.exercises||[]).map((ex,i)=>(
                       <div key={i} style={{marginBottom:14}}>
                         <div className="row-between mb-8"><span style={{fontWeight:700,fontSize:14}}>{ex.name}</span><span className={`tag tag-${ex.muscle}`}>{ex.muscle}</span></div>
-                        <div style={{background:"var(--bg)",borderRadius:var(--radius-sm),padding:"4px 0"}}>
+                        <div style={{background:"var(--bg)",borderRadius:"8px",padding:"4px 0"}}>
                           <div className="row" style={{padding:"4px 10px",borderBottom:"1px solid var(--border)"}}>
                             {["SET","WEIGHT","REPS","VOL"].map(h=><div key={h} style={{flex:h==="SET"?0:1,minWidth:h==="SET"?28:0,fontSize:10,fontWeight:700,color:"var(--text3)",textAlign:h==="SET"?"center":"left"}}>{h}</div>)}
                           </div>
